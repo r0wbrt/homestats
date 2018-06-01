@@ -7,11 +7,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/r0wbrt/riot/pkg/stream"
+	"github.com/r0wbrt/riot/pkg/riotserver"
 )
 
 func main() {
-	halServer := &stream.Server{
+	halServer := &riotserver.Server{
 		Name:        "Empty Server",
 		Description: "This server has no streams for clients to consume.",
 		GUID:        "FFFFFFFF00000002",

@@ -1,7 +1,7 @@
 //Copyright Robert C. Taylor 2018
 //Distributed under the terms of the LICENSE file
 
-package stream
+package riotserver
 
 import "time"
 
