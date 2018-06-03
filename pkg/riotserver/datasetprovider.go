@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/r0wbrt/riot/pkg/jsonhal"
+	"github.com/r0wbrt/riot/pkg/stream"
 )
 
 //DataSetValue is a single value in a measurment
@@ -46,7 +47,7 @@ type DataSetWriter interface {
 //consuming stream data.
 type DataSetEndPoint struct {
 	//Stream has the meta data describing the stream at this end point.
-	Stream *Stream
+	Stream *stream.Stream
 	//DataSource supplies the data.
 	DataSource DataSetProvider
 	//Handler is a standard HTTP handler that can be used to override the behavior of the stream.
@@ -63,9 +64,9 @@ type streamJSONReplyGetDefault struct {
 }
 
 type streamJSONReplySchema struct {
-	Name           string      `json:"name"`
-	StorageUnit    StorageType `json:"storageUnit"`
-	MeasurmentUnit string      `json:"measurmentUnit,omitempty"`
+	Name           string             `json:"name"`
+	StorageUnit    stream.StorageType `json:"storageUnit"`
+	MeasurmentUnit string             `json:"measurmentUnit,omitempty"`
 }
 
 //ServeHTTP services a HTTP request to the end point.
@@ -155,7 +156,7 @@ func (endpoint *DataSetEndPoint) datasetReply(w http.ResponseWriter, r *http.Req
 
 	names = append(names, "Time")
 	measurmentUnit = append(measurmentUnit, "nanosecond")
-	storeUnit = append(storeUnit, string(StorageTime))
+	storeUnit = append(storeUnit, string(stream.StorageTime))
 
 	csvW.csvWriter.Write(names)
 	csvW.csvWriter.Write(measurmentUnit)
@@ -233,7 +234,7 @@ func (endpoint *DataSetEndPoint) writeReply(w http.ResponseWriter, r *http.Reque
 type streamDataWriterCSV struct {
 	w         http.ResponseWriter
 	csvWriter *csv.Writer
-	schema    []TypeSchema
+	schema    []stream.TypeSchema
 	context   context.Context
 }
 

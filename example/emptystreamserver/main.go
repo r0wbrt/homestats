@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/r0wbrt/riot/pkg/riotserver"
+	"github.com/r0wbrt/riot/pkg/stream"
 )
 
 type StreamDataSource struct {
@@ -41,20 +42,20 @@ func main() {
 	}
 
 	halServer.Streams = append(halServer.Streams, &riotserver.DataSetEndPoint{
-		Stream: &riotserver.Stream{
+		Stream: &stream.Stream{
 			Name:            "Empty Test Stream 1",
 			Description:     "This stream has no data",
 			GUID:            "FFFFFFFF01000001",
 			RetentionPolicy: time.Second * 120,
-			Schema: []riotserver.TypeSchema{
-				riotserver.TypeSchema{Name: "Water", StorageUnit: riotserver.StorageNumber, MeasurmentUnit: "gpm"},
-				riotserver.TypeSchema{Name: "Flouride", StorageUnit: riotserver.StorageNumber, MeasurmentUnit: "ppm"},
+			Schema: []stream.TypeSchema{
+				stream.TypeSchema{Name: "Water", StorageUnit: stream.StorageNumber, MeasurmentUnit: "gpm"},
+				stream.TypeSchema{Name: "Flouride", StorageUnit: stream.StorageNumber, MeasurmentUnit: "ppm"},
 			},
 		},
 		DataSource: &StreamDataSource{},
 	})
 
-	halServer.Streams = append(halServer.Streams, &riotserver.DataSetEndPoint{Stream: &riotserver.Stream{
+	halServer.Streams = append(halServer.Streams, &riotserver.DataSetEndPoint{Stream: &stream.Stream{
 		Name: "Empty Test Stream 2",
 		GUID: "FFFFFFFF01000002",
 	}})
