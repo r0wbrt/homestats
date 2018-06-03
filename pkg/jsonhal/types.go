@@ -4,7 +4,9 @@
 package jsonhal
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 )
 
 //CollectionValue represents a JSON entry in Collection.
@@ -15,6 +17,21 @@ type CollectionValue struct {
 //MarshalJSON is the custom json serializer of CollectionValue
 func (cv *CollectionValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(cv.Properties)
+}
+
+//UnmarshalJSON is the custom JSON deserializer of CollectionValue
+func (cv *CollectionValue) UnmarshalJSON(data []byte) error {
+
+	var m *map[string]interface{}
+
+	err := json.Unmarshal(data, &m)
+	if err != nil {
+		return err
+	}
+
+	cv.Properties = *m
+
+	return nil
 }
 
 //NewCollection returns a new CollectionValue with all public fields initialized and ready for use.
@@ -52,6 +69,66 @@ func (c *Collection) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(jsonObj)
+}
+
+func (c *Collection) UnmarshalJSON(data []byte) error {
+
+	var jsonCollection *map[string]*_JSONHALValue
+	err := json.Unmarshal(data, &jsonCollection)
+	if err != nil {
+		return err
+	}
+
+	c.Values = make(map[string][]*CollectionValue)
+
+	for k, v := range *jsonCollection {
+		c.Values[k] = v.Values
+	}
+
+	return nil
+}
+
+type _JSONHALValue struct {
+	Values []*CollectionValue
+}
+
+func (jhv *_JSONHALValue) UnmarshalJSON(data []byte) error {
+
+	//First read the next token to determine if this is a
+	//naked object, or an array.
+	buf := bytes.NewBuffer(data)
+	decoder := json.NewDecoder(buf)
+
+	tok, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+
+	//Naked object set to null
+	if tok == nil {
+		return nil
+	}
+
+	delim, ok := tok.(json.Delim)
+	if !ok {
+		return fmt.Errorf("jsonhal : Unexpected token, expected { or [")
+	}
+
+	switch delim.String() {
+	case "{":
+
+		var val *CollectionValue
+		err = json.Unmarshal(data, &val)
+		if err == nil {
+			jhv.Values = append(jhv.Values, val)
+		}
+	case "[":
+		err = json.Unmarshal(data, &jhv.Values)
+	default:
+		err = fmt.Errorf("jsonhal : Unexpected token, expected { or [")
+	}
+
+	return err
 }
 
 //CreateLink is a shortcut function used to create a HAL+JSON link object to be placed inside
