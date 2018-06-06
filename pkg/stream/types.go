@@ -43,3 +43,15 @@ type Stream struct {
 	//The duration a single measurment is kept before being deleted.
 	RetentionPolicy time.Duration
 }
+
+//DataSetValue is a single value in a measurment
+type DataSetValue struct {
+	Name  string
+	Value string
+}
+
+//DataSetMeasurment is a single measurment in a data set.
+type DataSetMeasurment struct {
+	Time   time.Time
+	Values []DataSetValue
+}

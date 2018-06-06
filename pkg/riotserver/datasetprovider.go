@@ -16,18 +16,6 @@ import (
 	"github.com/r0wbrt/riot/pkg/stream"
 )
 
-//DataSetValue is a single value in a measurment
-type DataSetValue struct {
-	Name  string
-	Value string
-}
-
-//DataSetMeasurment is a single measurment in a data set.
-type DataSetMeasurment struct {
-	Time   time.Time
-	Values []DataSetValue
-}
-
 //DataSetProvider is used by StreamEndPoint to serve data requests to the client.
 type DataSetProvider interface {
 
@@ -40,7 +28,7 @@ type DataSetWriter interface {
 	//Write takes a set of measurments to send to the client. Returns an error
 	//if something went wrong. If this does return an error, the consuming code should
 	//quit and return control back to the stream reader end point.
-	Write(measurments []DataSetMeasurment) error
+	Write(measurments []stream.DataSetMeasurment) error
 }
 
 //DataSetEndPoint provides a HATEOS like API over http for
@@ -238,7 +226,7 @@ type streamDataWriterCSV struct {
 	context   context.Context
 }
 
-func (csvWriter *streamDataWriterCSV) Write(measurments []DataSetMeasurment) error {
+func (csvWriter *streamDataWriterCSV) Write(measurments []stream.DataSetMeasurment) error {
 
 	//Check context in case the client has closed the connection
 	err := csvWriter.context.Err()

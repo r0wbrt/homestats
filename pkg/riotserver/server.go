@@ -117,7 +117,7 @@ func (s *Server) DefaultRoot(w http.ResponseWriter, r *http.Request) {
 		link.Properties["guid"] = s.Streams[i].Stream.GUID
 		streamLinks = append(streamLinks, link)
 	}
-	resp.Links.Values["streams"] = streamLinks
+	resp.Links.Values["stream"] = streamLinks
 
 	//Write reply to client
 	s.writeReply(w, r, http.StatusOK, resp)
