@@ -199,10 +199,44 @@ func (rs *RiotServer) GetResource(ctx context.Context, GUID string) (stream.Stre
 		ret.Schema = append(ret.Schema, schemaType)
 	}
 
+	serverS.stream = &ret //Cache stream for later use
+
+	//Get dateset URL
+	links, ok := jsonReply.Links.Values["data"]
+	if ok && len(links) > 0 {
+		relpath, ok := getStringFromMap("href", links[0].Properties)
+		if ok {
+			serverS.datasetURL, err = buildPath(path, relpath)
+			if err != nil {
+				return ret, err
+			}
+		}
+	}
+
 	return ret, nil
 }
 
-func (rs *RiotServer) ReadDataset() error { return nil } //TODO - Fix Type
+type DatasetReader interface {
+	Read(context.Context, []stream.DataSetMeasurment) error
+}
+
+func (rs *RiotServer) ReadDataset(ctx context.Context, GUID string, reader DatasetReader, start time.Time, end time.Time) error {
+
+	_, err := rs.GetResource(ctx, GUID)
+	if err != nil {
+		return err
+	}
+
+	s := rs.streams[GUID]
+
+	if s.datasetURL == "" { //Assume the root dataset url is never the root path since the root path should be the directory.
+		return fmt.Errorf("riotclient : Resource has not specified dataset URL")
+	}
+
+	//todo - use post
+
+	return nil
+}
 
 func buildPath(base string, ref string) (string, error) {
 

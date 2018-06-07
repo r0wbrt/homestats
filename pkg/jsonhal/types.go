@@ -9,7 +9,7 @@ import (
 	"fmt"
 )
 
-//CollectionValue represents a JSON entry in Collection.
+//CollectionValue represents a JSON entry in the Collection.
 type CollectionValue struct {
 	Properties map[string]interface{}
 }
