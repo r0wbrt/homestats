@@ -29,9 +29,19 @@ func (s *StreamDataSource) ReadRange(ctx context.Context, start, end time.Time, 
 	v2.Value = "1.1"
 	v2.Name = "Water"
 
-	var m = stream.DataSetMeasurment{Values: []stream.DataSetValue{v1, v2}}
+	var m = stream.DataSetMeasurment{Values: []stream.DataSetValue{v1, v2}, Time: time.Now()}
 
-	writer.Write([]stream.DataSetMeasurment{m})
+	var v11 = stream.DataSetValue{}
+	v11.Value = "7.2"
+	v11.Name = "Flouride"
+
+	var v21 = stream.DataSetValue{}
+	v21.Value = "8.1"
+	v21.Name = "Water"
+
+	var m1 = stream.DataSetMeasurment{Values: []stream.DataSetValue{v11, v21}, Time: time.Now().AddDate(-1, 0, 0)}
+
+	writer.Write([]stream.DataSetMeasurment{m, m1})
 
 	return nil
 }

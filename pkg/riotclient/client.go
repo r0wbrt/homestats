@@ -5,8 +5,10 @@ package riotclient
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -28,7 +30,7 @@ type serverStream struct {
 	stream *stream.Stream //May be nil if this stream has not been requested yet
 }
 
-type RiotServer struct {
+type RiotEndPoint struct {
 
 	//The path to RIOT server
 	URL string
@@ -43,7 +45,7 @@ type RiotServer struct {
 	GUID string
 
 	//Cached stream info
-	streams map[string]serverStream
+	streams map[string]*serverStream
 }
 
 type riotServerResp struct {
@@ -55,7 +57,7 @@ type riotServerResp struct {
 
 //Initialize connects to the riot server getting the list of
 //resources present on the server.
-func Initialize(ctx context.Context, serverURL string) (*RiotServer, error) {
+func Initialize(ctx context.Context, serverURL string) (*RiotEndPoint, error) {
 
 	req, err := http.NewRequest(http.MethodGet, serverURL, nil)
 	if err != nil {
@@ -83,9 +85,9 @@ func Initialize(ctx context.Context, serverURL string) (*RiotServer, error) {
 		return nil, err
 	}
 
-	rs := RiotServer{Name: jResp.Name, Description: jResp.Description, GUID: jResp.GUID, URL: serverURL}
+	rs := RiotEndPoint{Name: jResp.Name, Description: jResp.Description, GUID: jResp.GUID, URL: serverURL}
 
-	rs.streams = make(map[string]serverStream)
+	rs.streams = make(map[string]*serverStream)
 
 	datasetLinks, ok := jResp.Links.Values["stream"]
 	if ok {
@@ -102,14 +104,14 @@ func Initialize(ctx context.Context, serverURL string) (*RiotServer, error) {
 				continue
 			}
 
-			rs.streams[GUID] = serverStream{uRL: href}
+			rs.streams[GUID] = &serverStream{uRL: href}
 		}
 	}
 
 	return &rs, nil
 }
 
-func (rs *RiotServer) GetResourceList(ctx context.Context) ([]string, error) {
+func (rs *RiotEndPoint) GetResourceList(ctx context.Context) ([]string, error) {
 
 	var resources []string
 
@@ -135,17 +137,17 @@ type streamJSONReplySchema struct {
 	MeasurmentUnit string             `json:"measurmentUnit,omitempty"`
 }
 
-func (rs *RiotServer) GetResource(ctx context.Context, GUID string) (stream.Stream, error) {
+func (rs *RiotEndPoint) GetResource(ctx context.Context, GUID string) (stream.Stream, error) {
 
 	ret := stream.Stream{}
 
-	serverS, ok := rs.streams[GUID] //Check Cache
+	serverS, ok := rs.streams[GUID]
 	if ok {
 		if serverS.stream != nil {
 			return *serverS.stream, nil
 		}
 	} else {
-		return ret, fmt.Errorf("riotclient : ")
+		return ret, fmt.Errorf("riotclient : Requested stream was not found")
 	}
 
 	str, ok := rs.streams[GUID]
@@ -220,7 +222,7 @@ type DatasetReader interface {
 	Read(context.Context, []stream.DataSetMeasurment) error
 }
 
-func (rs *RiotServer) ReadDataset(ctx context.Context, GUID string, reader DatasetReader, start time.Time, end time.Time) error {
+func (rs *RiotEndPoint) ReadDataset(ctx context.Context, GUID string, reader DatasetReader, start time.Time, end time.Time) error {
 
 	_, err := rs.GetResource(ctx, GUID)
 	if err != nil {
@@ -229,11 +231,74 @@ func (rs *RiotServer) ReadDataset(ctx context.Context, GUID string, reader Datas
 
 	s := rs.streams[GUID]
 
-	if s.datasetURL == "" { //Assume the root dataset url is never the root path since the root path should be the directory.
+	if s.datasetURL == "" {
 		return fmt.Errorf("riotclient : Resource has not specified dataset URL")
 	}
 
-	//todo - use post
+	URL, err := url.Parse(s.datasetURL)
+	if err != nil {
+		return err
+	}
+
+	URL.Query().Add("start", start.Format(time.RFC3339Nano))
+	URL.Query().Add("end", end.Format(time.RFC3339Nano))
+
+	req, err := http.NewRequest(http.MethodGet, URL.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	req = req.WithContext(ctx)
+	req.Header.Add("Accept", "text/csv")
+
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	csvReader := csv.NewReader(resp.Body)
+
+	//Return err if an err occurs. We should not encounter an io.EOF
+	//this early in the stream. If we do, then this stream is malformed.
+	header, err := csvReader.Read()
+	if err != nil {
+		return err
+	}
+	_, err = csvReader.Read()
+	if err != nil {
+		return err
+	}
+	_, err = csvReader.Read()
+	if err != nil {
+		return err
+	}
+
+	for {
+		record, err := csvReader.Read()
+		if err != nil {
+			if err != io.EOF {
+				return err
+			}
+			break
+		}
+
+		values := []stream.DataSetValue{}
+		for i := 0; i < len(record)-1; i++ {
+			values = append(values, stream.DataSetValue{Name: header[i], Value: record[i]})
+		}
+
+		timeResult, err := time.Parse(time.RFC3339Nano, record[len(record)-1])
+		if err != nil {
+			return err
+		}
+		measurment := stream.DataSetMeasurment{Time: timeResult, Values: values}
+		err = reader.Read(ctx, []stream.DataSetMeasurment{measurment})
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
